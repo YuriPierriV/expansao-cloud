@@ -5,11 +5,13 @@ import uuid
 
 app = Flask(__name__)
 
-BUCKET_NAME = 'pedido-novo-ceub.estudo-de-caso-cloud'
+# ARN do ponto de acesso
+BUCKET_ACCESS_POINT_ARN = 'arn:aws:s3:us-east-1:381492243096:accesspoint/acesso-public'
 
+# Criar o cliente boto3 (não precisa mudar o endpoint manualmente, boto3 entende Access Point se usar o ARN)
 s3 = boto3.client('s3')
 
-# Página HTML atualizada
+# Página HTML
 HTML_FORM = '''
 <!DOCTYPE html>
 <html>
@@ -50,12 +52,12 @@ def submit():
 
         print("Dados recebidos:", order)
 
-        # Nome único para o arquivo no S3
+        # Nome único para o arquivo dentro do bucket
         file_name = f"orders/{uuid.uuid4()}.json"
 
-        # Salva o JSON no S3
+        # Salvar no S3 através do Access Point
         s3.put_object(
-            Bucket=BUCKET_NAME,
+            Bucket=BUCKET_ACCESS_POINT_ARN,
             Key=file_name,
             Body=json.dumps(order, ensure_ascii=False),
             ContentType='application/json'
