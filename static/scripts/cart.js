@@ -10,8 +10,8 @@ function addToCart(productId) {
     renderCart();
 }
 
-function generateOrderId() {
-    return crypto.randomUUID();  // gera um UUID v4 direto no navegador
+function randomOrderId() {
+    return Math.floor(Math.random() * 1000000);
 }
 
 function renderCart() {
