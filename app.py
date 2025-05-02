@@ -1,76 +1,69 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template
 import boto3
 import json
 import uuid
+from datetime import datetime
 
 app = Flask(__name__)
 
 # ARN do ponto de acesso
 BUCKET_ACCESS_POINT_ARN = 'arn:aws:s3:us-east-1:381492243096:accesspoint/acesso-public'
 
-# Criar o cliente boto3 (não precisa mudar o endpoint manualmente, boto3 entende Access Point se usar o ARN)
+# Cliente S3
 s3 = boto3.client('s3')
 
-# Página HTML
-HTML_FORM = '''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Enviar Pedido</title>
-</head>
-<body>
-    <h1>Formulário de Envio de Pedido</h1>
-    <form action="/submit" method="post">
-        <label>Email:</label><br>
-        <input type="email" name="email" required><br><br>
-
-        <label>ID do Pedido:</label><br>
-        <input type="text" name="order_id" required><br><br>
-
-        <label>Detalhes do Pedido:</label><br>
-        <textarea name="details" rows="6" cols="40" required></textarea><br><br>
-
-        <input type="submit" value="Enviar Pedido">
-    </form>
-</body>
-</html>
-'''
+# Simulando a lista de produtos (poderia vir de banco futuramente)
+PRODUCTS = [
+    {
+        "product_id": "1",
+        "name": "Notebook Gamer",
+        "description": "Notebook potente para jogos pesados.",
+        "price": 4500.00,
+        "stock_quantity": 10,
+        "created_at": str(datetime.now())
+    },
+    {
+        "product_id": "2",
+        "name": "Mouse Sem Fio",
+        "description": "Mouse wireless com bateria durável.",
+        "price": 150.00,
+        "stock_quantity": 50,
+        "created_at": str(datetime.now())
+    },
+    {
+        "product_id": "3",
+        "name": "Teclado Mecânico",
+        "description": "Teclado mecânico RGB para alta performance.",
+        "price": 350.00,
+        "stock_quantity": 30,
+        "created_at": str(datetime.now())
+    }
+]
 
 @app.route('/', methods=['GET'])
 def form():
-    return render_template_string(HTML_FORM)
+    return render_template('form.html', products=PRODUCTS)
 
 @app.route('/submit', methods=['POST'])
 def submit():
     try:
-        # Captura os dados do formulário
-        order = {
-            "email": request.form.get('email'),
-            "order_id": request.form.get('order_id'),
-            "details": request.form.get('details')
-        }
+        order_data = request.get_json()
+        print("Pedido recebido:", order_data)
 
-        print("Dados recebidos:", order)
-
-        # Nome único para o arquivo dentro do bucket
         file_name = f"orders/{uuid.uuid4()}.json"
 
-        # Salvar no S3 através do Access Point
         s3.put_object(
             Bucket=BUCKET_ACCESS_POINT_ARN,
             Key=file_name,
-            Body=json.dumps(order, ensure_ascii=False),
+            Body=json.dumps(order_data, ensure_ascii=False),
             ContentType='application/json'
         )
 
-        return '''
-            <h2>Pedido enviado com sucesso!</h2>
-            <a href="/">Voltar ao formulário</a>
-        '''
+        return jsonify({"message": "Pedido enviado com sucesso!"})
 
     except Exception as e:
         print("Erro:", str(e))
-        return f"<h2>Erro: {str(e)}</h2>"
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80)
+    app.run(host='0.0.0.0')
