@@ -111,7 +111,7 @@ def submit():
         connection = psycopg2.connect(**DB_CONFIG)
         cursor = connection.cursor()
 
-        for item in order_data['items']:
+        for item in order_data['details']:
             product_id = item['product_id']
             quantity = 1  # Estamos considerando que o botão "Adicionar" é para 1 unidade
 
