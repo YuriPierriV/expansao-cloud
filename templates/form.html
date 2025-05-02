@@ -131,12 +131,15 @@
 
     <div id="product-list">
         {% for product in products %}
-            <div class="product" data-id="{{ product.product_id }}" data-name="{{ product.name }}" data-price="{{ product.price }}">
-                <h2>{{ product.name }}</h2>
-                <p>{{ product.description }}</p>
-                <p>Preço: R$ {{ "%.2f"|format(product.price) }}</p>
-                <button onclick="addToCart('{{ product.product_id }}')">Adicionar ao Carrinho</button>
-            </div>
+            {% if product.stock_quantity > 0 %}
+                <div class="product" data-id="{{ product.product_id }}" data-name="{{ product.name }}" data-price="{{ product.price }}">
+                    <h2>{{ product.name }}</h2>
+                    <p>{{ product.description }}</p>
+                    <p>Preço: R$ {{ "%.2f"|format(product.price) }}</p>
+                    <p>Estoque: {{ product.stock_quantity }} unidade{{ 's' if product.stock_quantity > 1 else '' }}</p>
+                    <button onclick="addToCart('{{ product.product_id }}')">Adicionar ao Carrinho</button>
+                </div>
+            {% endif %}
         {% endfor %}
     </div>
 

@@ -107,8 +107,36 @@ def submit():
         order_data = request.get_json()
         print("Pedido recebido:", order_data)
 
-        file_name = f"orders/{uuid.uuid4()}.json"
+        # Processar cada item comprado
+        connection = psycopg2.connect(**DB_CONFIG)
+        cursor = connection.cursor()
 
+        for item in order_data['items']:
+            product_id = item['product_id']
+            quantity = 1  # Estamos considerando que o botão "Adicionar" é para 1 unidade
+
+            # Primeiro, verifica se tem estoque
+            cursor.execute("SELECT stock_quantity FROM products WHERE product_id = %s", (product_id,))
+            result = cursor.fetchone()
+            if result is None:
+                raise Exception(f"Produto ID {product_id} não encontrado.")
+            current_stock = result[0]
+            if current_stock <= 0:
+                raise Exception(f"Produto ID {product_id} está fora de estoque.")
+
+            # Atualizar diminuindo o estoque
+            cursor.execute("""
+                UPDATE products
+                SET stock_quantity = stock_quantity - %s
+                WHERE product_id = %s
+            """, (quantity, product_id))
+
+        connection.commit()
+        cursor.close()
+        connection.close()
+
+        # Agora salvar o pedido no S3
+        file_name = f"orders/{uuid.uuid4()}.json"
         s3.put_object(
             Bucket=BUCKET_ACCESS_POINT_ARN,
             Key=file_name,
@@ -116,7 +144,7 @@ def submit():
             ContentType='application/json'
         )
 
-        return jsonify({"message": "Pedido enviado com sucesso!"})
+        return jsonify({"message": "Pedido enviado e estoque atualizado com sucesso!"})
 
     except Exception as e:
         print("Erro:", str(e))
