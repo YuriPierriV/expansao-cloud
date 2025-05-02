@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const order = {
             email,
-            order_id: generateOrderId(),
+            order_id: randomOrderId(),
             items: cart
         };
 
