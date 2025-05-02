@@ -1,8 +1,9 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, url_for
 import boto3
 import json
 import uuid
 from datetime import datetime
+import psycopg2
 
 app = Flask(__name__)
 
@@ -12,37 +13,93 @@ BUCKET_ACCESS_POINT_ARN = 'arn:aws:s3:us-east-1:381492243096:accesspoint/acesso-
 # Cliente S3
 s3 = boto3.client('s3')
 
-# Simulando a lista de produtos (poderia vir de banco futuramente)
-PRODUCTS = [
-    {
-        "product_id": "1",
-        "name": "Notebook Gamer",
-        "description": "Notebook potente para jogos pesados.",
-        "price": 4500.00,
-        "stock_quantity": 10,
-        "created_at": str(datetime.now())
-    },
-    {
-        "product_id": "2",
-        "name": "Mouse Sem Fio",
-        "description": "Mouse wireless com bateria durável.",
-        "price": 150.00,
-        "stock_quantity": 50,
-        "created_at": str(datetime.now())
-    },
-    {
-        "product_id": "3",
-        "name": "Teclado Mecânico",
-        "description": "Teclado mecânico RGB para alta performance.",
-        "price": 350.00,
-        "stock_quantity": 30,
-        "created_at": str(datetime.now())
-    }
-]
+# Configurações do Banco de Dados
+DB_CONFIG = {
+    "host": "database-2.cluster-cpwk8e8yo28t.us-east-1.rds.amazonaws.com",
+    "database": "migration",  # Banco migration que você criou
+    "user": "postgres",       # Usuário correto
+    "password": "senhaadmin",
+    "port": 5432
+}
+
+def get_products_from_db():
+    try:
+        connection = psycopg2.connect(**DB_CONFIG)
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT product_id, name, description, price, stock_quantity, created_at
+            FROM products
+            ORDER BY created_at DESC
+        """)
+        
+        rows = cursor.fetchall()
+
+        products = []
+        for row in rows:
+            products.append({
+                "product_id": row[0],
+                "name": row[1],
+                "description": row[2],
+                "price": float(row[3]),
+                "stock_quantity": row[4],
+                "created_at": row[5].strftime('%Y-%m-%d %H:%M:%S')
+            })
+
+        return products
+
+    except Exception as e:
+        print("Erro ao buscar produtos:", e)
+        return []
+
+    finally:
+        if connection:
+            cursor.close()
+            connection.close()
+
+def add_product_to_db(name, description, price, stock_quantity):
+    try:
+        connection = psycopg2.connect(**DB_CONFIG)
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            INSERT INTO products (name, description, price, stock_quantity)
+            VALUES (%s, %s, %s, %s)
+        """, (name, description, price, stock_quantity))
+
+        connection.commit()
+
+    except Exception as e:
+        print("Erro ao adicionar produto:", e)
+        raise
+
+    finally:
+        if connection:
+            cursor.close()
+            connection.close()
 
 @app.route('/', methods=['GET'])
-def form():
-    return render_template('form.html', products=PRODUCTS)
+def catalog():
+    products = get_products_from_db()
+    return render_template('catalog.html', products=products)
+
+@app.route('/add-product', methods=['POST'])
+def add_product():
+    try:
+        data = request.get_json()
+        name = data['name']
+        description = data['description']
+        price = float(data['price'])
+        stock_quantity = int(data['stock_quantity'])
+
+        add_product_to_db(name, description, price, stock_quantity)
+
+        return jsonify({"message": "Produto adicionado com sucesso!"}), 201
+
+    except Exception as e:
+        print("Erro ao adicionar produto:", e)
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route('/submit', methods=['POST'])
 def submit():

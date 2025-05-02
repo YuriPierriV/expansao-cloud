@@ -1,0 +1,2 @@
+Para voltar ao ambiente do servidor no ec2 tmux attach -t flaskapp
+
