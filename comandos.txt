@@ -1,2 +1,14 @@
-Para voltar ao ambiente do servidor no ec2 tmux attach -t flaskapp
+# Instalar Git
+sudo yum install -y git
 
+# Clonar o repositório
+git clone https://github.com/seu-usuario/expansao-cloud.git
+
+# Acessar a pasta
+cd expansao-cloud
+
+# Instalar dependências
+pip3 install -r requirements.txt
+
+# Rodar a aplicação
+sudo python3 app.py
